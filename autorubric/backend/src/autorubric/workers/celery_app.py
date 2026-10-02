@@ -1,7 +1,8 @@
 import os
 from celery import Celery
+from autorubric.core.config import config
 
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = config.REDIS_URL
 
 celery_app = Celery(
     "autorubric_worker",

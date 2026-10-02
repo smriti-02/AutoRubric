@@ -10,3 +10,5 @@ venv/
 *.pdf
 !backend/tests/fixtures/annotation/*.pdf
 !backend/tests/fixtures/extraction/*.pdf
+playwright-report/
+docs/screenshots/

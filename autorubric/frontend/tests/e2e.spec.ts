@@ -110,13 +110,13 @@ test.describe('End-to-End Flow', () => {
     // 5. Check Cohort page
     await expect(page.getByRole('heading', { name: 'Cohort: Batch Upload' })).toBeVisible();
     await expect(page.locator('text=test1.pdf')).toBeVisible();
-    await expect(page.locator('text=DONE')).toBeVisible();
+    await expect(page.locator('text=DONE').first()).toBeVisible();
     
     // Save screenshot of cohort
     await page.screenshot({ path: '../docs/screenshots/cohort.png' });
 
     // 6. Navigate to Results
-    await page.click('text=View Result');
+    await page.locator('text=View Result').first().click();
     await expect(page.getByRole('heading', { name: 'Result for d1' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Annotated PDF' })).toBeVisible();
     

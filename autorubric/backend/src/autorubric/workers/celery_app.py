@@ -1,7 +1,8 @@
 import os
 from celery import Celery
+from autorubric.core.config import config
 
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = config.REDIS_URL
 
 celery_app = Celery(
     "autorubric_worker",
@@ -21,3 +22,10 @@ celery_app.conf.update(
         "autorubric.workers.tasks.*": {"queue": "celery"},
     }
 )
+
+if REDIS_URL.startswith("rediss://"):
+    import ssl
+    celery_app.conf.update(
+        broker_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+        redis_backend_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
+    )

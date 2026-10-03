@@ -1,21 +1,14 @@
-import json
-from pathlib import Path
+import os
 from autorubric.contracts import Rubric, Proposition, Token
+from .compiler import compile_rubric, topological_order
 
-def compile_rubric(rubric_json: dict) -> Rubric:
-    # Just validate the dictionary
-    return Rubric.model_validate(rubric_json)
+__all__ = ["compile_rubric", "topological_order", "segment"]
 
-def segment(tokens: list[Token]) -> list[Proposition]:
-    fixture_path = Path(__file__).parents[3] / "tests" / "fixtures" / "nlp" / "propositions.json"
-    with open(fixture_path) as f:
-        data = json.load(f)
-    return [Proposition.model_validate(item) for item in data]
 
-def detect(docs: list[dict]) -> "CollusionReport":
-    from autorubric.contracts import CollusionReport
-    return CollusionReport(
-        cohort_id="unknown",
-        pairs=[],
-        cluster_labels={}
-    )
+def segment(tokens: list[Token], doc_id: str = "") -> list[Proposition]:
+    mode = os.environ.get("STAGE_SEGMENTATION_MODE", "real")
+    if mode == "stub":
+        from .stub import segment as _segment
+    else:
+        from .segmenter import segment as _segment
+    return _segment(tokens, doc_id=doc_id)

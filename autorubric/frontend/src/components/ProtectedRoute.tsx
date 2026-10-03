@@ -16,14 +16,18 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (mounted && !token && pathname !== '/login') {
-      router.push('/login');
+    if (mounted && pathname !== '/login') {
+      const stored = typeof window !== 'undefined' ? (sessionStorage.getItem('token') || localStorage.getItem('token')) : null;
+      if (!token && !stored) {
+        router.push('/login');
+      }
     }
   }, [mounted, token, pathname, router]);
 
   if (!mounted) return null; // Avoid hydration mismatch
 
-  if (!token && pathname !== '/login') {
+  const hasToken = token || (typeof window !== 'undefined' && (sessionStorage.getItem('token') || localStorage.getItem('token')));
+  if (!hasToken && pathname !== '/login') {
     return null; // Wait for redirect
   }
 

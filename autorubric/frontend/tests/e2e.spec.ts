@@ -2,8 +2,15 @@ import { test, expect } from '@playwright/test';
 
 test.describe('End-to-End Flow', () => {
   test('upload -> cohort polling -> results -> collusion', async ({ page }) => {
-    // 1. Mock API Responses
-    await page.route('**/rubrics', async route => {
+    test.setTimeout(90000);
+    // 0. Pre-authenticate via storage
+    await page.addInitScript(() => {
+      sessionStorage.setItem('token', 'mock_token');
+      localStorage.setItem('token', 'mock_token');
+    });
+
+    // 1. Mock API Responses (explicitly targeting backend API port 8000)
+    await page.route('http://localhost:8000/rubrics', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -13,27 +20,40 @@ test.describe('End-to-End Flow', () => {
       });
     });
 
-    await page.route('**/submissions/batch', async route => {
+    await page.route('http://localhost:8000/submissions/batch', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ cohort_id: 'c1', jobs: [{ job_id: 'j1', file_name: 'test.pdf' }] })
+        body: JSON.stringify({ cohort_id: 'c1', jobs: [{ job_id: 'j1', file_name: 'test1.pdf' }] })
       });
     });
 
-    await page.route('**/cohorts/c1', async route => {
+    await page.route('http://localhost:8000/cohorts/c1', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           id: 'c1',
           name: 'Batch Upload',
-          jobs: [{ job_id: 'j1', file_name: 'test.pdf', status: 'DONE', doc_id: 'd1' }]
+          jobs: [{ job_id: 'j1', file_name: 'test1.pdf', status: 'DONE', doc_id: 'd1' }]
         })
       });
     });
 
-    await page.route('**/results/d1', async route => {
+    await page.route('http://localhost:8000/jobs/*', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          job_id: 'j1',
+          status: 'DONE',
+          doc_id: 'd1',
+          file_name: 'test1.pdf'
+        })
+      });
+    });
+
+    await page.route('http://localhost:8000/results/d1', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -49,7 +69,7 @@ test.describe('End-to-End Flow', () => {
       });
     });
 
-    await page.route('**/results/d1/pdf', async route => {
+    await page.route('http://localhost:8000/results/d1/pdf', async route => {
       // Mock an empty PDF blob
       await route.fulfill({
         status: 200,
@@ -58,7 +78,7 @@ test.describe('End-to-End Flow', () => {
       });
     });
 
-    await page.route('**/cohort/c1/collusion', async route => {
+    await page.route('http://localhost:8000/cohorts/c1/collusion', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -76,32 +96,29 @@ test.describe('End-to-End Flow', () => {
     await expect(page.locator('text=Biology Basics')).toBeVisible();
 
     // 3. Navigate to Upload
-    await page.click('text=Upload Submission');
-    await expect(page.locator('text=Submit Assignment')).toBeVisible();
+    await page.click('nav a:has-text("Upload")');
+    await expect(page.getByRole('heading', { name: 'Upload Submissions' })).toBeVisible();
 
-    // 4. Submit Batch
-    // Create a dummy file buffer
-    const fileBuffer = Buffer.from('dummy pdf content');
-    await page.setInputFiles('input[type="file"]', {
-      name: 'test.pdf',
-      mimeType: 'application/pdf',
-      buffer: fileBuffer
-    });
+    // 4. Submit Batch with 2 files
+    const file1 = { name: 'test1.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 sample 1') };
+    const file2 = { name: 'test2.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 sample 2') };
+    await page.setInputFiles('input[type="file"]', [file1, file2]);
+    await expect(page.locator('select option[value="r1"]')).toBeAttached();
     await page.selectOption('select', 'r1');
-    await page.click('button:has-text("Submit as Batch")');
+    await page.click('button:has-text("Upload and Grade")');
 
     // 5. Check Cohort page
-    await expect(page.locator('text=Cohort: Batch Upload')).toBeVisible();
-    await expect(page.locator('text=test.pdf')).toBeVisible();
-    await expect(page.locator('text=DONE')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cohort: Batch Upload' })).toBeVisible();
+    await expect(page.locator('text=test1.pdf')).toBeVisible();
+    await expect(page.locator('text=DONE').first()).toBeVisible();
     
     // Save screenshot of cohort
     await page.screenshot({ path: '../docs/screenshots/cohort.png' });
 
     // 6. Navigate to Results
-    await page.click('text=View Result');
-    await expect(page.locator('text=Result for d1')).toBeVisible();
-    await expect(page.locator('text=Annotated PDF')).toBeVisible();
+    await page.locator('text=View Result').first().click();
+    await expect(page.getByRole('heading', { name: 'Result for d1' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Annotated PDF' })).toBeVisible();
     
     // Save screenshot of result
     await page.screenshot({ path: '../docs/screenshots/result.png', fullPage: true });
@@ -109,7 +126,7 @@ test.describe('End-to-End Flow', () => {
     // 7. Go back to Cohort and check Collusion
     await page.goto('http://localhost:3000/cohorts/c1');
     await page.click('text=View Collusion Report');
-    await expect(page.locator('text=Collusion Report for Cohort c1')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Collusion Report for Cohort c1' })).toBeVisible();
     await expect(page.locator('text=Pair Similarity: 95.0%')).toBeVisible();
     
     // Save screenshot of collusion

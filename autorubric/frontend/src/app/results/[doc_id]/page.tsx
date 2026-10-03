@@ -4,8 +4,13 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getResult, verifyResult, getResultPdf } from '@/lib/api';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { PdfViewer } from '@/components/PdfViewer';
+import { CheckCircle2, ShieldAlert, ChevronLeft, ShieldCheck, Download } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const PdfViewer = dynamic(
+  () => import('@/components/PdfViewer').then((mod) => mod.PdfViewer),
+  { ssr: false, loading: () => <div className="p-8 text-center text-xs text-zinc-400">Loading visual PDF viewer...</div> }
+);
 
 export default function ResultPage() {
   const params = useParams();
@@ -20,116 +25,136 @@ export default function ResultPage() {
     mutationFn: () => verifyResult(docId) as Promise<{ match: boolean, differences?: unknown }>
   });
 
-  if (isLoading) return <div className="p-6">Loading result...</div>;
-  if (error || !result) return <div className="p-6 text-red-500">Failed to load result</div>;
+  if (isLoading) return <div className="max-w-5xl mx-auto py-12 text-center text-xs text-zinc-400">Loading grading result...</div>;
+  if (error || !result) return <div className="max-w-5xl mx-auto py-12 text-center text-xs text-rose-500">Failed to load result</div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white shadow rounded border">
-      <div className="mb-4 flex justify-between items-center">
-        <Link href="/" className="text-blue-600 hover:underline">&larr; Back to Dashboard</Link>
+    <div className="max-w-5xl mx-auto py-6">
+      <div className="flex items-center justify-between mb-6">
+        <Link 
+          href="/" 
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-900 transition-colors"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span>Back to Dashboard</span>
+        </Link>
         <button 
           onClick={() => verifyMutation.mutate()} 
           disabled={verifyMutation.isPending}
-          className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full glass-card-subtle hover:bg-white text-zinc-700 text-xs font-medium transition-all shadow-sm active:scale-[0.98]"
         >
-          {verifyMutation.isPending ? 'Verifying...' : 'Verify Score'}
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>{verifyMutation.isPending ? 'Verifying...' : 'Verify Score'}</span>
         </button>
       </div>
 
-      <div className="flex justify-between items-end mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Result for {docId}</h1>
-          <div className="text-gray-500 mt-1">Rubric ID: {result.rubric_id}</div>
-        </div>
-        <div className="text-right">
-          <div className="text-3xl font-bold">{result.total} / {result.max_total}</div>
-          <div className="text-gray-500 uppercase text-xs tracking-wider font-semibold">Total Score</div>
-        </div>
-      </div>
-
-      {result.needs_review && (
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded flex gap-3">
-          <AlertCircle className="text-yellow-600" />
+      <div className="glass-card rounded-3xl p-8 sm:p-10 mb-8 transition-all duration-300">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-8 border-b border-black/[0.05]">
           <div>
-            <h3 className="font-bold text-yellow-800">Needs Review</h3>
-            <ul className="list-disc ml-4 text-yellow-700 text-sm">
-              {(result.review_reasons || []).map((r: string, i: number) => <li key={i}>{r}</li>)}
-            </ul>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Evaluation Result</span>
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 mt-1">Result for {docId}</h1>
+            <p className="text-xs text-zinc-500 mt-1">Rubric ID: {result.rubric_id}</p>
+          </div>
+          <div className="text-left sm:text-right">
+            <div className="text-4xl font-semibold tracking-tight text-zinc-900">
+              {result.total} <span className="text-xl font-normal text-zinc-400">/ {result.max_total}</span>
+            </div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mt-1">Total Score</div>
           </div>
         </div>
-      )}
 
-      {verifyMutation.isSuccess && verifyMutation.data && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded">
-          <h3 className="font-bold text-green-800">Verification</h3>
-          <p className="text-green-700 text-sm">
-            {verifyMutation.data.match ? "Scores match the verifiable proof." : "Scores DO NOT match the verifiable proof! (See console for differences)"}
-          </p>
-        </div>
-      )}
+        {result.needs_review && (
+          <div className="my-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs flex gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <h3 className="font-semibold text-amber-900">Needs Review</h3>
+              <ul className="list-disc ml-4 text-amber-800 mt-1 space-y-0.5">
+                {(result.review_reasons || []).map((r: string, i: number) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
 
-      <table className="w-full text-left border-collapse mt-4">
-        <thead>
-          <tr className="bg-gray-50 border-b">
-            <th className="p-3 font-medium text-gray-600">Criterion</th>
-            <th className="p-3 font-medium text-gray-600">Label</th>
-            <th className="p-3 font-medium text-gray-600">Marks</th>
-            <th className="p-3 font-medium text-gray-600">Trust</th>
-            <th className="p-3 font-medium text-gray-600">Evidence</th>
-          </tr>
-        </thead>
-        <tbody>
-          {result.per_criterion?.map((c: { criterion_id: string, label: string, marks: number, credit: number, capped?: boolean, trusted: boolean, flags: { code: string, reason: string }[], evidence_bboxes: { page: number, x: number, y: number }[] }) => (
-            <tr key={c.criterion_id} className={`border-b ${!c.trusted ? 'bg-red-50' : ''}`}>
-              <td className="p-3 font-medium">{c.criterion_id}</td>
-              <td className="p-3">
-                <span className={`inline-block px-2 py-1 rounded text-xs font-semibold
-                  ${c.label === 'FULL_CREDIT' ? 'bg-green-100 text-green-800' : 
-                    c.label === 'PARTIAL_CREDIT' ? 'bg-blue-100 text-blue-800' : 
-                    c.label === 'MISCONCEPTION' ? 'bg-purple-100 text-purple-800' : 
-                    'bg-gray-100 text-gray-800'}`}>
-                  {c.label}
-                </span>
-              </td>
-              <td className="p-3">
-                <div className="font-bold">{c.marks}</div>
-                <div className="text-xs text-gray-500">Credit: {c.credit}</div>
-                {c.capped && <div className="text-xs text-orange-500">Capped</div>}
-              </td>
-              <td className="p-3">
-                {c.trusted ? (
-                  <span title="Trusted"><CheckCircle2 className="text-green-500" size={20} /></span>
-                ) : (
-                  <span title="Untrusted"><ShieldAlert className="text-red-500" size={20} /></span>
-                )}
-                {c.flags && c.flags.length > 0 && (
-                  <div className="mt-1 flex flex-col gap-1">
-                    {c.flags.map((f: { code: string, reason: string }, i: number) => (
-                      <span key={i} className="text-[10px] bg-red-100 text-red-800 px-1 py-0.5 rounded" title={f.reason}>
-                        {f.code}
+        {verifyMutation.isSuccess && verifyMutation.data && (
+          <div className="my-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div>
+              <span className="font-semibold">Verification Proof: </span>
+              {verifyMutation.data.match ? "Scores match the cryptographic evidence proof." : "Scores do not match the proof."}
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto mt-6">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-black/[0.06] text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                <th className="py-3 px-4">Criterion</th>
+                <th className="py-3 px-4">Label</th>
+                <th className="py-3 px-4">Marks</th>
+                <th className="py-3 px-4">Security / Trust</th>
+                <th className="py-3 px-4">Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.per_criterion?.map((c) => (
+                <tr key={c.criterion_id} className={`border-b border-black/[0.04] ${!c.trusted ? 'bg-rose-500/5' : ''}`}>
+                  <td className="py-4 px-4 font-medium text-xs text-zinc-900">{c.criterion_id}</td>
+                  <td className="py-4 px-4">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide
+                      ${c.label === 'FULL_CREDIT' ? 'bg-emerald-500/10 text-emerald-700' : 
+                        c.label === 'PARTIAL_CREDIT' ? 'bg-amber-500/10 text-amber-700' : 
+                        c.label === 'MISCONCEPTION' ? 'bg-purple-500/10 text-purple-700' : 
+                        'bg-zinc-100 text-zinc-600'}`}>
+                      {c.label}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-xs">
+                    <div className="font-semibold text-zinc-900">{c.marks}</div>
+                    <div className="text-[10px] text-zinc-400">Credit: {c.credit}</div>
+                    {c.capped && <div className="text-[10px] text-amber-600 font-medium">Capped by dependency</div>}
+                  </td>
+                  <td className="py-4 px-4 text-xs">
+                    {c.trusted ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        Trusted
                       </span>
-                    ))}
-                  </div>
-                )}
-              </td>
-              <td className="p-3 text-sm text-gray-600">
-                {/* Fallback to boxes since proposition text is a future contract */}
-                {c.evidence_bboxes?.length > 0 ? (
-                  c.evidence_bboxes.map((box: { page: number, x: number, y: number }, i: number) => (
-                    <div key={i}>Page {box.page} (x:{box.x}, y:{box.y})</div>
-                  ))
-                ) : (
-                  "No evidence"
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-700">
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                        Untrusted
+                      </span>
+                    )}
+                    {c.flags && c.flags.length > 0 && (
+                      <div className="mt-1 flex flex-col gap-1">
+                        {c.flags.map((f, i) => (
+                          <span key={i} className="text-[10px] bg-rose-500/10 text-rose-700 px-1.5 py-0.5 rounded-md font-mono" title={f.reason}>
+                            {f.code}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-4 px-4 text-xs text-zinc-500">
+                    {c.evidence_bboxes?.length > 0 ? (
+                      c.evidence_bboxes.map((box, i) => (
+                        <div key={i} className="text-[11px]">Page {box.page} (x:{Math.round(box.x)}, y:{Math.round(box.y)})</div>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-zinc-400">No evidence</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold mb-4">Annotated PDF</h2>
-        <PdfViewerWrapper docId={docId} />
+        <div className="mt-12 pt-8 border-t border-black/[0.05]">
+          <h2 className="text-xl font-semibold tracking-tight text-zinc-900 mb-4">Annotated PDF</h2>
+          <PdfViewerWrapper docId={docId} />
+        </div>
       </div>
     </div>
   );
@@ -141,17 +166,21 @@ function PdfViewerWrapper({ docId }: { docId: string }) {
     queryFn: () => getResultPdf(docId),
   });
 
-  if (isLoading) return <div className="p-4 bg-gray-100 rounded">Loading PDF...</div>;
-  if (error || !pdfBlob) return <div className="p-4 bg-gray-100 rounded text-red-500">PDF not available yet or failed to load.</div>;
+  if (isLoading) return <div className="p-8 text-center text-xs text-zinc-400">Loading PDF document...</div>;
+  if (error || !pdfBlob) return <div className="p-8 text-center text-xs text-rose-500">PDF not available yet or failed to load.</div>;
 
   const url = URL.createObjectURL(pdfBlob);
 
-  return <PdfViewer url={url} onDownload={() => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `result_${docId}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }} />;
+  return (
+    <div className="rounded-2xl overflow-hidden border border-black/[0.06] bg-black/[0.01]">
+      <PdfViewer url={url} onDownload={() => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `result_${docId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }} />
+    </div>
+  );
 }

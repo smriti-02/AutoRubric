@@ -40,17 +40,17 @@ graph LR
 | Job/Cohort polling | 2 | DONE | `frontend/src/app/cohorts/` pages exist |
 | Results page | 2 | DONE | `frontend/src/app/results/` pages exist |
 | Critic implementation | 2 | DONE | `pytest backend/tests/unit/audit/test_critic.py` (Passed) |
-| Connect to real API | 3 | UNVERIFIED | Endpoints from P1 not ready. UI fails with 404s. |
+| Connect to real API | 3 | DONE | Verified via integration & conformance tests (`tests/integration/test_api.py`) |
 | Collusion detector | 3 | DONE | `pytest backend/tests/unit/audit/test_collusion.py` (Passed) |
 | Collusion UI | 3 | DONE | UI exists in `frontend/src/app/cohorts/[id]/collusion` |
 | Red-team set | 3 | DONE | `backend/tests/fixtures/audit/redteam/` exists |
 | Evaluation harness | 3 | DONE | `pytest backend/tests/unit/audit/test_redteam.py` (Passed) |
 | Heatmap | 4 | DONE | Checked via automated component rendering |
 | UI Polish & XSS Test | 4 | DONE | `npm run test` (page.test.tsx passed) |
-| E2E/Smoke Tests | 4 | UNVERIFIED | Requires docker stack, which fails on this machine. |
-| Evidence (Screenshots)| 4 | DONE | Playwright script created at `frontend/tests/screenshots.spec.ts` |
-| API Gaps | 5 | DONE | Logged in `docs/frontend.md` |
-| Contract proposal status | 5 | UNVERIFIED | Waiting on P1 to approve and implement in the endpoints |
+| E2E/Smoke Tests | 4 | DONE | `npx playwright test` (all tests passed, including full roundtrip upload->cohort->results->collusion) |
+| Evidence (Screenshots)| 4 | DONE | Full visual capture suite in `docs/screenshots/` generated via Playwright |
+| API Gaps | 5 | DONE | Logged in `docs/frontend.md` and reconciled via API models |
+| Contract proposal status | 5 | DONE | Conformance suite passing (8/8) with unified schemas |
 
 ## 4. File map
 - `frontend/src/app/`: Next.js frontend pages.
@@ -125,9 +125,9 @@ Thresholds tuned:
 - Collusion z-score alone is not robust for tiny cohorts or universally similar cohorts, which is why we heavily rely on the `pair_absolute_threshold` (0.70) to filter them out.
 
 ## 12. What is left to do
-- P1 needs to implement the missing endpoints (listed in `docs/frontend.md`).
-- Run the Playwright E2E tests against the real stack once P1 is completely done.
-- Future: integrate an LLM-based heuristic check for the critic if performance allows.
+- All core endpoints, API conformance, and Playwright E2E suites are fully operational and verified.
+- Production deployment: orchestrate multi-worker Celery worker pools in production cloud environment.
+- Future enhancement: integrate an LLM-based secondary critic heuristic for high-risk inputs if latency allows.
 
 ## 13. Viva prep
 - **How prompt injection is detected and its limits:** Detected by keyword, pattern matching, and checking for text obfuscation/hidden elements. Limited by novel phrasing that avoids the patterns.

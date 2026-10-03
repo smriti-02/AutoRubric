@@ -15,6 +15,12 @@ def detect(cohort_embeddings: Dict[str, Dict[str, List[float]]], config: Collusi
     if config is None:
         config = CollusionConfig()
 
+    if isinstance(cohort_embeddings, list):
+        cohort_embeddings = {
+            item.get("doc_id", str(i)): item.get("embeddings", {}) if isinstance(item, dict) else {}
+            for i, item in enumerate(cohort_embeddings)
+        }
+
     doc_ids = list(cohort_embeddings.keys())
     
     if len(doc_ids) < 2:

@@ -13,7 +13,7 @@ export const handlers = [
 
   http.get(`${API_URL}/rubrics`, async () => {
     return HttpResponse.json([
-      { id: "r1", title: "Test Rubric", criteria: [] }
+      { id: "r1", title: "Biology Basics", criteria: [] }
     ])
   }),
 
@@ -50,27 +50,21 @@ export const handlers = [
   }),
 
   http.post(`${API_URL}/submissions/batch`, async () => {
-    await delay(1000);
-    return HttpResponse.json([
-      { doc_id: "doc123", job_id: "job123", success: true }
-    ])
+    return HttpResponse.json({
+      cohort_id: "c1",
+      jobs: [
+        { job_id: "j1", file_name: "test1.pdf", status: "DONE", doc_id: "d1" },
+        { job_id: "j2", file_name: "test2.pdf", status: "DONE", doc_id: "d2" }
+      ]
+    });
   }),
 
   http.get(`${API_URL}/jobs/:id`, async ({ params }) => {
-    // Simulate a job moving through statuses
-    const statuses = ['QUEUED', 'EXTRACTING', 'EVALUATING', 'AUDITING', 'SCORING', 'DONE'];
-    const timeSinceStart = Date.now() % 30000; // loop every 30s for demo
-    const statusIndex = Math.min(Math.floor(timeSinceStart / 5000), statuses.length - 1);
-    
-    const status = statuses[statusIndex];
-    let doc_id = undefined;
-    if (status === 'DONE') doc_id = "doc-" + params.id;
-    
     return HttpResponse.json({
       job_id: params.id,
-      status: status,
+      status: 'DONE',
       error: null,
-      doc_id: doc_id,
+      doc_id: 'd1',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
@@ -79,12 +73,10 @@ export const handlers = [
   http.get(`${API_URL}/cohorts/:id`, async ({ params }) => {
     return HttpResponse.json({
       id: params.id,
-      name: "Mock Cohort",
+      name: "Batch Upload",
       jobs: [
-        { job_id: "j1", status: "DONE", file_name: "submission1.pdf", doc_id: "doc-j1" },
-        { job_id: "j2", status: "EVALUATING", file_name: "submission2.pdf" },
-        { job_id: "j3", status: "FAILED", error: "Extraction failed", file_name: "submission3.pdf" },
-        { job_id: "j4", status: "NEEDS_REVIEW", file_name: "submission4.pdf", doc_id: "doc-j4" },
+        { job_id: "j1", status: "DONE", file_name: "test1.pdf", doc_id: "d1" },
+        { job_id: "j2", status: "DONE", file_name: "test2.pdf", doc_id: "d2" }
       ]
     });
   }),
@@ -124,6 +116,26 @@ export const handlers = [
     return HttpResponse.json({
       match: true,
       differences: null
+    });
+  }),
+
+  http.get(`${API_URL}/cohorts/:id/collusion`, async ({ params }) => {
+    return HttpResponse.json({
+      cohort_id: params.id,
+      doc_pairs: [
+        {
+          a: "d1",
+          b: "d2",
+          similarity: 0.95,
+          matching_props: ["test::test"]
+        }
+      ]
+    });
+  }),
+
+  http.get(`${API_URL}/results/:doc_id/pdf`, async () => {
+    return new HttpResponse(new Blob(['%PDF-1.4 sample']), {
+      headers: { 'Content-Type': 'application/pdf' },
     });
   }),
 ]

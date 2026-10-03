@@ -18,13 +18,17 @@ def load_fixture(module, filename):
     with open(fixture_path) as f:
         return json.load(f)
 
+def load_pdf_fixture(filename="clean_single_column.pdf") -> bytes:
+    fixture_path = Path(__file__).parents[1] / "fixtures" / "extraction" / filename
+    return fixture_path.read_bytes()
+
 def test_extraction_conformance():
-    tokens = extract(b"dummy pdf")
+    tokens = extract(load_pdf_fixture())
     assert isinstance(tokens, list)
     assert all(isinstance(t, Token) for t in tokens)
 
 def test_segmentation_conformance():
-    tokens = extract(b"dummy pdf")
+    tokens = extract(load_pdf_fixture())
     props = segment(tokens)
     assert isinstance(props, list)
     assert all(isinstance(p, Proposition) for p in props)
@@ -39,7 +43,7 @@ def test_retrieval_conformance():
     rubric_data = load_fixture("rubrics", "rubric.json")
     rubric = Rubric.model_validate(rubric_data)
     
-    tokens = extract(b"dummy")
+    tokens = extract(load_pdf_fixture())
     props = segment(tokens)
     
     candidates = match(props, rubric)
@@ -58,7 +62,7 @@ def test_retrieval_conformance():
 def test_evaluator_conformance():
     rubric_data = load_fixture("rubrics", "rubric.json")
     rubric = Rubric.model_validate(rubric_data)
-    tokens = extract(b"dummy")
+    tokens = extract(load_pdf_fixture())
     props = segment(tokens)
     candidates = match(props, rubric)
     
@@ -76,7 +80,7 @@ def test_evaluator_conformance():
 def test_scorer_conformance():
     rubric_data = load_fixture("rubrics", "rubric.json")
     rubric = Rubric.model_validate(rubric_data)
-    tokens = extract(b"dummy")
+    tokens = extract(load_pdf_fixture())
     props = segment(tokens)
     candidates = match(props, rubric)
     classifications = classify(candidates)
@@ -89,8 +93,17 @@ def test_audit_conformance():
     assert isinstance(verdicts, list)
 
 def test_annotation_conformance():
-    pdf = annotate(b"dummy", [])
+    rubric_data = load_fixture("rubrics", "rubric.json")
+    rubric = Rubric.model_validate(rubric_data)
+    pdf_bytes = load_pdf_fixture()
+    tokens = extract(pdf_bytes)
+    props = segment(tokens)
+    candidates = match(props, rubric)
+    classifications = classify(candidates)
+    score_result = score(classifications, rubric, [])
+    pdf = annotate(pdf_bytes, score_result)
     assert isinstance(pdf, bytes)
+    assert len(pdf) > 0
 
 def test_nlp_detect_conformance():
     # detect takes a list of doc data (doc_id, text, embeddings, etc.) or just anything to return a CollusionReport

@@ -7,15 +7,21 @@ import { login } from '@/lib/api';
 let memoryToken: string | null = null;
 
 export function useAuth() {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('token') || localStorage.getItem('token') || memoryToken;
+    }
+    return null;
+  });
   const router = useRouter();
 
   useEffect(() => {
-    if (!memoryToken) {
-      memoryToken = sessionStorage.getItem('token');
+    if (!memoryToken && typeof window !== 'undefined') {
+      memoryToken = sessionStorage.getItem('token') || localStorage.getItem('token');
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setToken(memoryToken);
+    if (memoryToken) {
+      setToken(memoryToken);
+    }
   }, []);
 
   const doLogin = async (data: Record<string, unknown>) => {

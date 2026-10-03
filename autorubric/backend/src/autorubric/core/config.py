@@ -1,4 +1,10 @@
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+_ENV_PATH = Path(__file__).resolve().parents[4] / ".env"
+load_dotenv(_ENV_PATH)
 
 class Config:
     DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/autorubric")

@@ -17,7 +17,7 @@ class RuleResult:
 INJECTION_PATTERNS = [
     {
         "id": "ignore_instructions",
-        "regex": re.compile(r"(ignore|disregard|override|forget|bypass)\s+(all\s+)?(previous\s+)?(instructions|rules|prompts|checks)?", re.IGNORECASE),
+        "regex": re.compile(r"(ignore|disregard|override|forget|bypass)\s+(all\s+)?(previous\s+|prior\s+|above\s+)?(instructions|rules|prompts|checks)", re.IGNORECASE),
         "description": "Attempt to override instructions"
     },
     {

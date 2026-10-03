@@ -39,7 +39,7 @@ class Token(BaseModel):
 class Proposition(BaseModel):
     """An atomic claim extracted from a document."""
     id: str
-    doc_id: str
+    doc_id: str = ""
     text: str
     token_ids: list[str]
     page: int

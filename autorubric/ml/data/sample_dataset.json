@@ -1,0 +1,26 @@
+{
+  "train": [
+    {"question_id": "q1", "criterion": "Chloroplasts contain chlorophyll to absorb sunlight for photosynthesis.", "response": "Chloroplasts absorb sunlight using green chlorophyll pigments.", "label": "FULL_CREDIT"},
+    {"question_id": "q1", "criterion": "Chloroplasts contain chlorophyll to absorb sunlight for photosynthesis.", "response": "Plants use chloroplasts for capturing solar light.", "label": "FULL_CREDIT"},
+    {"question_id": "q1", "criterion": "Chloroplasts contain chlorophyll to absorb sunlight for photosynthesis.", "response": "Chloroplasts absorb water.", "label": "PARTIAL_CREDIT"},
+    {"question_id": "q1", "criterion": "Chloroplasts contain chlorophyll to absorb sunlight for photosynthesis.", "response": "Mitochondria absorb sunlight to create food.", "label": "MISCONCEPTION"},
+    {"question_id": "q1", "criterion": "Chloroplasts contain chlorophyll to absorb sunlight for photosynthesis.", "response": "The nucleus controls the cell.", "label": "NO_CREDIT"},
+    {"question_id": "q1", "criterion": "Chloroplasts contain chlorophyll to absorb sunlight for photosynthesis.", "response": "I do not understand this question.", "label": "NO_CREDIT"},
+
+    {"question_id": "q2", "criterion": "Water is split during photolysis to release oxygen gas.", "response": "Water molecules are split during light reactions releasing oxygen.", "label": "FULL_CREDIT"},
+    {"question_id": "q2", "criterion": "Water is split during photolysis to release oxygen gas.", "response": "Water is broken down.", "label": "PARTIAL_CREDIT"},
+    {"question_id": "q2", "criterion": "Water is split during photolysis to release oxygen gas.", "response": "Carbon dioxide splits to release oxygen.", "label": "MISCONCEPTION"},
+    {"question_id": "q2", "criterion": "Water is split during photolysis to release oxygen gas.", "response": "Cellular respiration produces ATP.", "label": "NO_CREDIT"},
+
+    {"question_id": "q3", "criterion": "A process has an isolated virtual address space.", "response": "Each process runs in its own private virtual memory space.", "label": "FULL_CREDIT"},
+    {"question_id": "q3", "criterion": "A process has an isolated virtual address space.", "response": "Processes have memory.", "label": "PARTIAL_CREDIT"},
+    {"question_id": "q3", "criterion": "A process has an isolated virtual address space.", "response": "All processes share the same heap and call stack directly.", "label": "MISCONCEPTION"},
+    {"question_id": "q3", "criterion": "A process has an isolated virtual address space.", "response": "Compilers convert code into assembly language.", "label": "NO_CREDIT"}
+  ],
+  "validation": [
+    {"question_id": "q4", "criterion": "Carbon dioxide is fixed into glucose during the Calvin cycle in the stroma.", "response": "Carbon dioxide is converted into glucose molecules in the stroma.", "label": "FULL_CREDIT"},
+    {"question_id": "q4", "criterion": "Carbon dioxide is fixed into glucose during the Calvin cycle in the stroma.", "response": "Carbon is turned into sugars.", "label": "PARTIAL_CREDIT"},
+    {"question_id": "q4", "criterion": "Carbon dioxide is fixed into glucose during the Calvin cycle in the stroma.", "response": "Glucose is fixed into carbon dioxide.", "label": "MISCONCEPTION"},
+    {"question_id": "q4", "criterion": "Carbon dioxide is fixed into glucose during the Calvin cycle in the stroma.", "response": "The Golgi packages lysosome enzymes.", "label": "NO_CREDIT"}
+  ]
+}

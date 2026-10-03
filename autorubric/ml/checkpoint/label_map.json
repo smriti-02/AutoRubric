@@ -1,0 +1,14 @@
+{
+  "id2label": {
+    "0": "FULL_CREDIT",
+    "1": "PARTIAL_CREDIT",
+    "2": "MISCONCEPTION",
+    "3": "NO_CREDIT"
+  },
+  "label2id": {
+    "FULL_CREDIT": 0,
+    "PARTIAL_CREDIT": 1,
+    "MISCONCEPTION": 2,
+    "NO_CREDIT": 3
+  }
+}

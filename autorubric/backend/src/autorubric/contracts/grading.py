@@ -18,6 +18,26 @@ class Candidate(BaseModel):
         }
     }
 
+class EvalPair(BaseModel):
+    """Input pair for the ML Evaluator."""
+    prop_id: str
+    criterion_id: str
+    proposition_text: str = ""
+    criterion_text: str = ""
+    similarity: float = 0.0
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "prop_id": "p1",
+                "criterion_id": "c1",
+                "proposition_text": "Plant cells contain chloroplasts.",
+                "criterion_text": "Chloroplasts absorb sunlight for photosynthesis.",
+                "similarity": 0.85
+            }]
+        }
+    }
+
 class Classification(BaseModel):
     """An ML evaluation label for a proposition/criterion pair."""
     id: str

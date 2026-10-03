@@ -20,7 +20,7 @@ fmt:
 	cd backend && ruff format src tests
 
 demo:
-	bash scripts/demo.sh
+	python scripts/demo.py
 
 models:
 	bash scripts/download_model.sh

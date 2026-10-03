@@ -1,0 +1,34 @@
+[
+  {
+    "id": "lb_01",
+    "criterion": "Chloroplasts contain chlorophyll to absorb sunlight for photosynthesis.",
+    "short_answer": "Chloroplasts absorb sunlight using chlorophyll pigments.",
+    "padded_on_topic": "Chloroplasts absorb sunlight using chlorophyll pigments. In biology and plant physiology, green plants carry out extensive organic processes across thylakoids and biochemical cellular compartments to sustain metabolic functions.",
+    "padded_off_topic": "Chloroplasts absorb sunlight using chlorophyll pigments. Also yesterday the stock market experienced significant fluctuations and football teams prepared for upcoming league matches.",
+    "expected_label": "FULL_CREDIT"
+  },
+  {
+    "id": "lb_02",
+    "criterion": "Water is split during photolysis to release oxygen gas.",
+    "short_answer": "Water molecules split into oxygen.",
+    "padded_on_topic": "Water molecules split into oxygen. Biological reactions in nature involve chemical reactions that have been studied by scientists in laboratory settings over multiple generations of cellular research.",
+    "padded_off_topic": "Water molecules split into oxygen. Furthermore computer operating systems schedule threads across CPU cores using preemptive scheduling algorithms.",
+    "expected_label": "FULL_CREDIT"
+  },
+  {
+    "id": "lb_03",
+    "criterion": "Carbon dioxide is fixed into glucose during the Calvin cycle.",
+    "short_answer": "Mitochondria produce glucose from nitrogen.",
+    "padded_on_topic": "Mitochondria produce glucose from nitrogen. This biological assertion is frequently examined in academic curricula and scientific examinations covering molecular biology and eukaryotic cellular architecture.",
+    "padded_off_topic": "Mitochondria produce glucose from nitrogen. Modern web applications utilize responsive CSS styling and asynchronous API fetching protocols.",
+    "expected_label": "MISCONCEPTION"
+  },
+  {
+    "id": "lb_04",
+    "criterion": "A process has an isolated virtual address space.",
+    "short_answer": "The operating system gives each process its own virtual address space.",
+    "padded_on_topic": "The operating system gives each process its own virtual address space. In modern computer architecture, memory management units and page tables coordinate paging and virtual memory protection.",
+    "padded_off_topic": "The operating system gives each process its own virtual address space. In culinary arts baking sourdough bread requires precise temperature monitoring and yeast fermentation.",
+    "expected_label": "FULL_CREDIT"
+  }
+]

@@ -1,0 +1,98 @@
+{
+  "$defs": {
+    "CreditMap": {
+      "description": "Maps a Label to a credit multiplier.",
+      "properties": {
+        "FULL_CREDIT": {
+          "default": 1.0,
+          "title": "Full Credit",
+          "type": "number"
+        },
+        "PARTIAL_CREDIT": {
+          "default": 0.5,
+          "title": "Partial Credit",
+          "type": "number"
+        },
+        "NO_CREDIT": {
+          "default": 0.0,
+          "title": "No Credit",
+          "type": "number"
+        },
+        "MISCONCEPTION": {
+          "default": 0.0,
+          "title": "Misconception",
+          "type": "number"
+        }
+      },
+      "title": "CreditMap",
+      "type": "object"
+    },
+    "Criterion": {
+      "description": "One line of the rubric, with a weight and dependencies.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "weight": {
+          "exclusiveMinimum": 0,
+          "title": "Weight",
+          "type": "number"
+        },
+        "depends_on": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "weight"
+      ],
+      "title": "Criterion",
+      "type": "object"
+    }
+  },
+  "description": "A multi-criteria rubric with dependencies.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "criteria": {
+      "items": {
+        "$ref": "#/$defs/Criterion"
+      },
+      "title": "Criteria",
+      "type": "array"
+    },
+    "credit_map": {
+      "$ref": "#/$defs/CreditMap"
+    },
+    "max_score": {
+      "title": "Max Score",
+      "type": "number"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "criteria",
+    "credit_map",
+    "max_score"
+  ],
+  "title": "Rubric",
+  "type": "object"
+}

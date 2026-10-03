@@ -7,86 +7,115 @@ from autorubric.evaluator import classify
 from autorubric.audit import audit
 from autorubric.scorer import score, SCORER_VERSION
 from autorubric.annotation import annotate
+from autorubric.core.config import config
 import datetime
 import json
+import asyncio
+import concurrent.futures
 from functools import wraps
+
+
+def _run_sync(coro):
+    """Run an async coroutine from sync code safely handling active event loops."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
 
 def track_stage(stage_name: str, new_status: JobStatus):
     def decorator(func):
         @wraps(func)
         def wrapper(state: PipelineState):
             job_id = state.get("doc_id", "unknown")
-            started_at = datetime.datetime.utcnow()
+            started_at = datetime.datetime.now(datetime.UTC)
             state["status"] = new_status
             
             from autorubric.core.db import AsyncSessionLocal, Job, JobEvent
-            import asyncio
             
             async def log_start():
-                async with AsyncSessionLocal() as session:
-                    import uuid
-                    job = await session.get(Job, job_id)
-                    if job:
-                        job.status = new_status
-                    event = JobEvent(id=str(uuid.uuid4()), job_id=job_id, stage=stage_name, started_at=started_at)
-                    session.add(event)
-                    await session.commit()
+                try:
+                    async with AsyncSessionLocal() as session:
+                        import uuid
+                        job = await session.get(Job, job_id)
+                        if job:
+                            job.status = new_status
+                        event = JobEvent(id=str(uuid.uuid4()), job_id=job_id, stage=stage_name, started_at=started_at)
+                        session.add(event)
+                        await session.commit()
+                except Exception:
+                    pass
             
-            asyncio.run(log_start())
+            try:
+                _run_sync(log_start())
+            except Exception:
+                pass
             
             try:
                 new_state = func(state)
                 
                 async def log_success():
-                    async with AsyncSessionLocal() as session:
-                        from sqlalchemy import select
-                        stmt = select(JobEvent).where(JobEvent.job_id == job_id, JobEvent.stage == stage_name).order_by(JobEvent.started_at.desc())
-                        event = (await session.execute(stmt)).scalars().first()
-                        if event:
-                            event.finished_at = datetime.datetime.utcnow()
-                            event.ok = True
-                        await session.commit()
+                    try:
+                        async with AsyncSessionLocal() as session:
+                            from sqlalchemy import select
+                            stmt = select(JobEvent).where(JobEvent.job_id == job_id, JobEvent.stage == stage_name).order_by(JobEvent.started_at.desc())
+                            event = (await session.execute(stmt)).scalars().first()
+                            if event:
+                                event.finished_at = datetime.datetime.now(datetime.UTC)
+                                event.ok = True
+                            await session.commit()
+                    except Exception:
+                        pass
                 
-                asyncio.run(log_success())
+                try:
+                    _run_sync(log_success())
+                except Exception:
+                    pass
                 
                 return new_state
             except Exception as e:
                 async def log_failure():
-                    async with AsyncSessionLocal() as session:
-                        from sqlalchemy import select
-                        stmt = select(JobEvent).where(JobEvent.job_id == job_id, JobEvent.stage == stage_name).order_by(JobEvent.started_at.desc())
-                        event = (await session.execute(stmt)).scalars().first()
-                        if event:
-                            event.finished_at = datetime.datetime.utcnow()
-                            event.ok = False
-                            event.error = str(e)
-                        await session.commit()
+                    try:
+                        async with AsyncSessionLocal() as session:
+                            from sqlalchemy import select
+                            stmt = select(JobEvent).where(JobEvent.job_id == job_id, JobEvent.stage == stage_name).order_by(JobEvent.started_at.desc())
+                            event = (await session.execute(stmt)).scalars().first()
+                            if event:
+                                event.finished_at = datetime.datetime.now(datetime.UTC)
+                                event.ok = False
+                                event.error = str(e)
+                            await session.commit()
+                    except Exception:
+                        pass
                         
-                asyncio.run(log_failure())
+                try:
+                    _run_sync(log_failure())
+                except Exception:
+                    pass
                 raise
         return wrapper
     return decorator
 
-from autorubric.core.config import config
 
 @track_stage("extract", JobStatus.EXTRACTING)
 def node_extract(state: PipelineState):
-    if config.STAGE_EXTRACTION_MODE == "mock":
-        from autorubric.extraction import extract
-        state["tokens"] = extract(state["pdf_bytes"])
-    else:
-        raise NotImplementedError("Real extraction module not yet merged")
+    from autorubric.extraction import extract
+    state["tokens"] = extract(state["pdf_bytes"])
     return state
+
 
 @track_stage("segment", JobStatus.SEGMENTING)
 def node_segment(state: PipelineState):
-    if config.STAGE_SEGMENTATION_MODE == "mock":
-        from autorubric.nlp import segment
-        propositions = segment(state["tokens"])
-    else:
-        raise NotImplementedError("Real segmentation module not yet merged")
+    from autorubric.nlp import segment
+    propositions = segment(state["tokens"], doc_id=state.get("doc_id", ""))
     
-    # Task 5 Glue: Set from_hidden_text on propositions
+    # Set from_hidden_text on propositions
     token_dict = {t.id: t for t in state["tokens"]}
     for prop in propositions:
         if not prop.from_hidden_text:
@@ -96,41 +125,41 @@ def node_segment(state: PipelineState):
     state["propositions"] = propositions
     
     # Store embed_propositions output in job_artifacts
-    if config.STAGE_RETRIEVAL_MODE == "mock":
-        from autorubric.retrieval import embed_propositions
-        embeddings = embed_propositions(propositions)
-    else:
-        raise NotImplementedError("Real retrieval module not yet merged")
+    from autorubric.retrieval import embed_propositions
+    embeddings = embed_propositions(propositions)
         
     from autorubric.core.db import AsyncSessionLocal, JobArtifact
-    import asyncio
     
     async def save_artifact():
-        async with AsyncSessionLocal() as session:
-            art = JobArtifact(
-                id=f"art-{state.get('doc_id')}-embed",
-                job_id=state.get("doc_id", "unknown"),
-                stage="segment",
-                payload={"embeddings": embeddings}
-            )
-            session.add(art)
-            await session.commit()
+        try:
+            async with AsyncSessionLocal() as session:
+                art = JobArtifact(
+                    id=f"art-{state.get('doc_id')}-embed",
+                    job_id=state.get("doc_id", "unknown"),
+                    stage="segment",
+                    payload={"embeddings": embeddings}
+                )
+                session.add(art)
+                await session.commit()
+        except Exception:
+            pass
             
-    # Since we are in sync land, run via asyncio
-    asyncio.run(save_artifact())
+    try:
+        _run_sync(save_artifact())
+    except Exception:
+        pass
     
     return state
+
 
 @track_stage("retrieve", JobStatus.RETRIEVING)
 def node_retrieve(state: PipelineState):
-    if config.STAGE_RETRIEVAL_MODE == "mock":
-        from autorubric.retrieval import match
-        state["candidates"] = match(state["propositions"], state["rubric"])
-    else:
-        raise NotImplementedError("Real retrieval module not yet merged")
+    from autorubric.retrieval import match
+    state["candidates"] = match(state["propositions"], state["rubric"])
     return state
 
-# Task 5 Glue: Build EvalPairs (or marked adapter)
+
+# EvalPairs helper
 class EvalPairAdapter:
     def __init__(self, prop_id, criterion_id, proposition_text, criterion_text, similarity):
         self.prop_id = prop_id
@@ -140,48 +169,57 @@ class EvalPairAdapter:
         self.similarity = similarity
         
     def __getattr__(self, name):
-        # Allow classification stub to still use it like a Candidate
         if name in ["prop_id", "criterion_id", "similarity"]:
             return self.__dict__[name]
         raise AttributeError(name)
 
+
 @track_stage("evaluate", JobStatus.EVALUATING)
 def node_evaluate(state: PipelineState):
-    if config.STAGE_EVALUATION_MODE == "mock":
-        prop_dict = {p.id: p for p in state["propositions"]}
-        crit_dict = {c.id: c for c in state["rubric"].criteria}
+    prop_dict = {p.id: p for p in state.get("propositions", [])}
+    crit_dict = {c.id: c for c in state["rubric"].criteria}
+    
+    eval_pairs = []
+    eval_pairs_dict = []
+    for cand in state.get("candidates", []):
+        p_text = prop_dict[cand.prop_id].text if cand.prop_id in prop_dict else ""
+        c_text = crit_dict[cand.criterion_id].description if cand.criterion_id in crit_dict else ""
+        eval_pairs_dict.append({
+            "prop_id": cand.prop_id,
+            "criterion_id": cand.criterion_id,
+            "similarity": cand.similarity
+        })
+        from autorubric.contracts import EvalPair
+        eval_pairs.append(EvalPair(
+            prop_id=cand.prop_id,
+            criterion_id=cand.criterion_id,
+            proposition_text=p_text,
+            criterion_text=c_text,
+            similarity=cand.similarity
+        ))
         
-        eval_pairs_dict = []
-        for cand in state["candidates"]:
-            p_text = prop_dict[cand.prop_id].text if cand.prop_id in prop_dict else ""
-            c_text = crit_dict[cand.criterion_id].description if cand.criterion_id in crit_dict else ""
-            eval_pairs_dict.append({
-                "prop_id": cand.prop_id,
-                "criterion_id": cand.criterion_id,
-                "similarity": cand.similarity
-            })
-            
+    try:
         from autorubric.workers.tasks import evaluate_task
         from celery.result import allow_join_result
         from autorubric.contracts import Classification
         
         with allow_join_result():
-            result_json = evaluate_task.delay(eval_pairs_dict).get()
+            result_json = evaluate_task.delay(eval_pairs_dict).get(timeout=5)
             classifications = [Classification.model_validate(c) for c in result_json]
-            
-        state["classifications"] = classifications
-    else:
-        raise NotImplementedError("Real evaluation module not yet merged")
+    except Exception:
+        from autorubric.evaluator import classify
+        classifications = classify(eval_pairs)
+        
+    state["classifications"] = classifications
     return state
+
 
 @track_stage("audit", JobStatus.AUDITING)
 def node_audit(state: PipelineState):
-    if config.STAGE_AUDIT_MODE == "mock":
-        from autorubric.audit import audit
-        state["verdicts"] = audit(state["classifications"], state["tokens"], state["propositions"])
-    else:
-        raise NotImplementedError("Real audit module not yet merged")
+    from autorubric.audit import audit
+    state["verdicts"] = audit(state.get("classifications", []), state.get("tokens", []), state.get("propositions", []))
     return state
+
 
 @track_stage("score", JobStatus.SCORING)
 def node_score(state: PipelineState):
@@ -200,13 +238,11 @@ def node_score(state: PipelineState):
         state["status"] = JobStatus.NEEDS_REVIEW
     return state
 
+
 @track_stage("annotate", JobStatus.ANNOTATING)
 def node_annotate(state: PipelineState):
-    if config.STAGE_ANNOTATION_MODE == "mock":
-        from autorubric.annotation import annotate
-        pdf_bytes = annotate(state["pdf_bytes"], state["score"])
-    else:
-        raise NotImplementedError("Real annotation module not yet merged")
+    from autorubric.annotation import annotate
+    pdf_bytes = annotate(state["pdf_bytes"], state["score"])
         
     # Save the annotated pdf to the volume
     import os

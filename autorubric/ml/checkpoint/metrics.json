@@ -1,0 +1,29 @@
+{
+  "mode": "smoke",
+  "model_name": "roberta-base",
+  "baselines": {
+    "majority_baseline": {
+      "accuracy": 0.25,
+      "macro_f1": 0.1,
+      "macro_precision": 0.0625,
+      "macro_recall": 0.25,
+      "weighted_f1": 0.1,
+      "majority_label": "FULL_CREDIT"
+    },
+    "tfidf_logreg_baseline": {
+      "accuracy": 0.5,
+      "macro_f1": 0.375,
+      "macro_precision": 0.3333,
+      "macro_recall": 0.5,
+      "weighted_f1": 0.375
+    }
+  },
+  "eval_metrics": {
+    "accuracy": 0.5,
+    "macro_f1": 0.375,
+    "macro_precision": 0.3333,
+    "macro_recall": 0.5,
+    "weighted_f1": 0.375
+  },
+  "status": "COMPLETED"
+}

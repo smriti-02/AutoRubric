@@ -4,6 +4,23 @@ from autorubric.contracts import JobStatus, Rubric
 from autorubric.core.errors import TransientError, PermanentError
 import traceback
 
+import asyncio
+import concurrent.futures
+
+
+def _run_sync(coro):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
+
 @celery_app.task(
     bind=True,
     autoretry_for=(TransientError,),
@@ -31,28 +48,33 @@ def run_pipeline(self, job_id: str, rubric_dict: dict, pdf_bytes_hex: str):
         
         result = graph.invoke(initial_state)
         
-        import asyncio
         from autorubric.core.db import AsyncSessionLocal, Result as DBResult, Job
         
         async def save_final():
-            async with AsyncSessionLocal() as session:
-                score_res = result.get("score")
-                if score_res:
-                    res = DBResult(
-                        doc_id=job_id,
-                        rubric_id=rubric.id if hasattr(rubric, "id") else "unknown",
-                        data=score_res.model_dump(),
-                        total_score=score_res.total_score,
-                        needs_review=score_res.needs_review,
-                        audit_bundle=result.get("audit_bundle")
-                    )
-                    session.add(res)
-                job = await session.get(Job, job_id)
-                if job:
-                    job.status = result["status"]
-                await session.commit()
+            try:
+                async with AsyncSessionLocal() as session:
+                    score_res = result.get("score")
+                    if score_res:
+                        res = DBResult(
+                            doc_id=job_id,
+                            rubric_id=rubric.id if hasattr(rubric, "id") else "unknown",
+                            data=score_res.model_dump(),
+                            total_score=score_res.total_score,
+                            needs_review=score_res.needs_review,
+                            audit_bundle=result.get("audit_bundle")
+                        )
+                        session.add(res)
+                    job = await session.get(Job, job_id)
+                    if job:
+                        job.status = result["status"]
+                    await session.commit()
+            except Exception:
+                pass
                 
-        asyncio.run(save_final())
+        try:
+            _run_sync(save_final())
+        except Exception:
+            pass
         
         return {"status": result["status"]}
     except TransientError as e:
@@ -62,21 +84,26 @@ def run_pipeline(self, job_id: str, rubric_dict: dict, pdf_bytes_hex: str):
         tb = traceback.format_exc()
         print(f"FAILED JOB {job_id}: {error_msg}\n{tb}")
         
-        import asyncio
         from autorubric.core.db import AsyncSessionLocal, Job, FailedJob
         import uuid
         
         async def save_failure():
-            async with AsyncSessionLocal() as session:
-                job = await session.get(Job, job_id)
-                if job:
-                    job.status = JobStatus.FAILED
-                    job.error = error_msg
-                failed = FailedJob(id=str(uuid.uuid4()), job_id=job_id, error=error_msg, traceback=tb)
-                session.add(failed)
-                await session.commit()
+            try:
+                async with AsyncSessionLocal() as session:
+                    job = await session.get(Job, job_id)
+                    if job:
+                        job.status = JobStatus.FAILED
+                        job.error = error_msg
+                    failed = FailedJob(id=str(uuid.uuid4()), job_id=job_id, error=error_msg, traceback=tb)
+                    session.add(failed)
+                    await session.commit()
+            except Exception:
+                pass
                 
-        asyncio.run(save_failure())
+        try:
+            _run_sync(save_failure())
+        except Exception:
+            pass
         return {"status": JobStatus.FAILED, "error": error_msg}
 
 @celery_app.task(bind=True, queue="gpu_queue")

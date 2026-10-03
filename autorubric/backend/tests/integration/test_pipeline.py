@@ -25,10 +25,13 @@ def test_pipeline_end_to_end():
     config.STAGE_AUDIT_MODE = "mock"
     config.STAGE_ANNOTATION_MODE = "mock"
 
+    pdf_path = Path(__file__).parents[1] / "fixtures" / "extraction" / "clean_single_column.pdf"
+    pdf_bytes = pdf_path.read_bytes()
+
     initial_state = {
         "doc_id": "doc123",
         "rubric": rubric,
-        "pdf_bytes": b"%PDF-1.4\n%dummy\n",
+        "pdf_bytes": pdf_bytes,
         "status": JobStatus.QUEUED
     }
     

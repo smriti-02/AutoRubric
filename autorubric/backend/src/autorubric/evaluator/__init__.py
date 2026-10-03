@@ -1,9 +1,14 @@
-import json
-from pathlib import Path
-from autorubric.contracts import Classification, Candidate
+import os
+from typing import List, Union
+from autorubric.contracts import Classification, Candidate, EvalPair
+from .classifier import classify as _real_classify, model_info
 
-def classify(pairs: list[Candidate]) -> list[Classification]:
-    fixture_path = Path(__file__).parents[3] / "tests" / "fixtures" / "evaluator" / "classifications.json"
-    with open(fixture_path) as f:
-        data = json.load(f)
-    return [Classification.model_validate(item) for item in data]
+__all__ = ["classify", "model_info"]
+
+
+def classify(pairs: List[Union[Candidate, EvalPair]]) -> List[Classification]:
+    mode = os.environ.get("STAGE_EVALUATION_MODE", "real")
+    if mode == "stub":
+        from .stub import classify as _stub_classify
+        return _stub_classify(pairs)
+    return _real_classify(pairs)
